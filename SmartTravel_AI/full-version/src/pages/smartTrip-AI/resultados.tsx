@@ -513,10 +513,10 @@ export default function SmartTripResultados() {
           {/* Ações */}
           <Grid size={12}>
             <Stack direction="row" spacing={2} justifyContent="center">
-              <Button variant="outlined" size="large" onClick={() => navigate('/smarttrip-ai/viagens')}>
+              <Button variant="outlined" size="large" onClick={() => navigate('/viagens')}>
                 Nova Busca
               </Button>
-              <Button variant="contained" size="large" color="success" sx={{ px: 6 }}>
+              <Button variant="contained" size="large" color="success" sx={{ px: 6 }} onClick={() => navigate('/dicas')}>
                 Confirmar e Prosseguir
               </Button>
             </Stack>

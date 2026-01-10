@@ -9,6 +9,7 @@ import SmartTripLayout from 'layout/Simple/SmartTripLayout';
 const SmartTripHome = Loadable(lazy(() => import('pages/smartTrip-AI')));
 const SmartTripViagens = Loadable(lazy(() => import('pages/smartTrip-AI/viagens')));
 const SmartTripResultados = Loadable(lazy(() => import('pages/smartTrip-AI/resultados')));
+const SmartTripDicas = Loadable(lazy(() => import('pages/smartTrip-AI/dicas')));
 const SmartTripSobre = Loadable(lazy(() => import('pages/smartTrip-AI/sobre')));
 
 // ==============================|| SMARTTRIP AI ROUTES ||============================== //
@@ -30,6 +31,10 @@ const router = createBrowserRouter(
         {
           path: 'resultados',
           element: <SmartTripResultados />
+        },
+        {
+          path: 'dicas',
+          element: <SmartTripDicas />
         },
         {
           path: 'sobre',
