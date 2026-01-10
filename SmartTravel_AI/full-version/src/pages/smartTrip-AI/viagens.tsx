@@ -44,6 +44,8 @@ interface TravelFormData {
   locais_visitar: string[];
   data_ida: string;
   data_retorno: string;
+  origem_volta: string; // De qual cidade parte na volta
+  destino_volta: string; // Para qual cidade vai na volta
   numero_adultos: number;
   numero_criancas: number;
   dias_por_cidade: Record<string, number>;
@@ -63,6 +65,8 @@ export default function SmartTripViagens() {
     locais_visitar: [],
     data_ida: '',
     data_retorno: '',
+    origem_volta: '',
+    destino_volta: '',
     numero_adultos: 1,
     numero_criancas: 0,
     dias_por_cidade: {},
@@ -87,11 +91,25 @@ export default function SmartTripViagens() {
       (local) => local !== formData.origem && local !== formData.destino
     );
     
+    // Limpa origem_volta se não estiver mais disponível
+    const cidadesPartidasVolta = [formData.destino, ...formData.locais_visitar];
+    if (formData.origem_volta && !cidadesPartidasVolta.includes(formData.origem_volta)) {
+      setFormData({ ...formData, locais_visitar: locaisAtualizados, origem_volta: '', destino_volta: '' });
+      return;
+    }
+    
+    // Limpa destino_volta se não estiver mais disponível
+    const cidadesProibidas = [formData.origem, formData.destino, ...formData.locais_visitar];
+    if (formData.destino_volta && cidadesProibidas.includes(formData.destino_volta)) {
+      setFormData({ ...formData, locais_visitar: locaisAtualizados, destino_volta: '' });
+      return;
+    }
+    
     // Só atualiza se houve mudança
     if (locaisAtualizados.length !== formData.locais_visitar.length) {
       setFormData({ ...formData, locais_visitar: locaisAtualizados });
     }
-  }, [formData.origem, formData.destino]);
+  }, [formData.origem, formData.destino, formData.locais_visitar]);
 
   // Calcular total de dias da viagem
   const getTotalDiasViagem = (): number => {
@@ -147,8 +165,51 @@ export default function SmartTripViagens() {
   };
 
   const handleSubmit = () => {
-    console.log('Dados do formulário:', formData);
-    // Aqui você pode enviar os dados para o backend
+    // Payload para a viagem de IDA
+    const payloadIda = {
+      ida_volta: false, // Sempre false pois ida e volta são chamadas separadas
+      origem: formData.origem,
+      destino: formData.destino,
+      locais_visitar: formData.locais_visitar,
+      data_ida: formData.data_ida,
+      numero_adultos: formData.numero_adultos,
+      numero_criancas: formData.numero_criancas,
+      dias_por_cidade: formData.dias_por_cidade,
+      incluir_refeicao: formData.incluir_refeicao,
+      incluir_hospedagem: formData.incluir_hospedagem,
+      incluir_transporte: formData.incluir_transporte
+    };
+
+    console.log('Payload IDA:', payloadIda);
+
+    // Se for ida e volta, criar payload para a VOLTA
+    let payloadVolta = null;
+    if (formData.ida_volta) {
+      payloadVolta = {
+        ida_volta: false, // Sempre false
+        origem: formData.origem_volta,
+        destino: formData.destino_volta,
+        locais_visitar: [], // Sem cidades intermediárias na volta
+        data_ida: formData.data_retorno, // Data de retorno vira a data de ida da volta
+        numero_adultos: formData.numero_adultos,
+        numero_criancas: formData.numero_criancas,
+        dias_por_cidade: {}, // Sem dias por cidade na volta
+        incluir_refeicao: false, // Sem custos extras na volta
+        incluir_hospedagem: false,
+        incluir_transporte: false
+      };
+
+      console.log('Payload VOLTA:', payloadVolta);
+    }
+
+    // Aqui você fará duas chamadas ao backend:
+    // 1. POST /api/viagens com payloadIda
+    // 2. Se payloadVolta existir, POST /api/viagens com payloadVolta
+    
+    // Exemplo de como ficaria:
+    // const resultadoIda = await fetch('/api/viagens', { method: 'POST', body: JSON.stringify(payloadIda) });
+    // const resultadoVolta = payloadVolta ? await fetch('/api/viagens', { method: 'POST', body: JSON.stringify(payloadVolta) }) : null;
+    
     navigate('/resultados');
   };
 
@@ -256,6 +317,7 @@ export default function SmartTripViagens() {
                     helperText={!formData.ida_volta ? 'Disponível apenas para viagens de ida e volta' : ''}
                   />
                 </Grid>
+
                 <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     fullWidth
@@ -400,9 +462,66 @@ export default function SmartTripViagens() {
             </MainCard>
           </Grid>
 
-          {/* Bloco 3 - Incluir na Pesquisa */}
+          {/* Bloco 3 - Dados da Volta (apenas se ida_volta = true) */}
+          {formData.ida_volta && (
+            <Grid size={12}>
+              <MainCard title="4. Dados da Volta" secondary={<Airplane variant="Bold" />}>
+                <Grid container spacing={3}>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <FormControl fullWidth required>
+                      <InputLabel>De Qual Cidade Parte na Volta</InputLabel>
+                      <Select 
+                        value={formData.origem_volta} 
+                        onChange={handleInputChange('origem_volta')} 
+                        label="De Qual Cidade Parte na Volta"
+                      >
+                        {/* Pode partir do destino */}
+                        {formData.destino && (
+                          <MenuItem value={formData.destino}>
+                            {CIDADES_DISPONIVEIS.find((c) => c.value === formData.destino)?.label}
+                          </MenuItem>
+                        )}
+                        {/* Pode partir de qualquer cidade que está visitando */}
+                        {formData.locais_visitar.map((cidade) => {
+                          const cidadeInfo = CIDADES_DISPONIVEIS.find((c) => c.value === cidade);
+                          return (
+                            <MenuItem key={cidade} value={cidade}>
+                              {cidadeInfo?.label}
+                            </MenuItem>
+                          );
+                        })}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <FormControl fullWidth required>
+                      <InputLabel>Para Qual Cidade Vai na Volta</InputLabel>
+                      <Select 
+                        value={formData.destino_volta} 
+                        onChange={handleInputChange('destino_volta')} 
+                        label="Para Qual Cidade Vai na Volta"
+                      >
+                        {/* Não pode ser: origem, destino, nem locais_visitar */}
+                        {CIDADES_DISPONIVEIS.filter((cidade) => 
+                          cidade.value !== formData.origem && 
+                          cidade.value !== formData.destino && 
+                          !formData.locais_visitar.includes(cidade.value)
+                        ).map((cidade) => (
+                          <MenuItem key={cidade.value} value={cidade.value}>
+                            {cidade.label}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                </Grid>
+              </MainCard>
+            </Grid>
+          )}
+
+          {/* Bloco 4 - Incluir na Pesquisa */}
           <Grid size={12}>
-            <MainCard title="4. Incluir na Pesquisa" secondary={<Location variant="Bold" />}>
+            <MainCard title={formData.ida_volta ? "5. Incluir na Pesquisa" : "4. Incluir na Pesquisa"} secondary={<Location variant="Bold" />}>
               <Grid container spacing={3}>
                 <Grid size={{ xs: 12, md: 4 }}>
                   <FormControlLabel
