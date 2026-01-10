@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // material-ui
@@ -15,47 +15,41 @@ import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import Switch from '@mui/material/Switch';
 import FormControlLabel from '@mui/material/FormControlLabel';
-import Slider from '@mui/material/Slider';
-import Divider from '@mui/material/Divider';
+import Chip from '@mui/material/Chip';
+import OutlinedInput from '@mui/material/OutlinedInput';
 
 // project-imports
 import MainCard from 'components/MainCard';
 import { GRID_COMMON_SPACING } from 'config';
 
 // assets
-import { Airplane, Location, Calendar, User, Home, Car, Cup, DollarCircle, Setting2 } from 'iconsax-reactjs';
+import { Airplane, Calendar, Home, Car, Cup, Location, Clock } from 'iconsax-reactjs';
 
-// Lista de cidades disponíveis
+// Lista de cidades disponíveis (extraídas do database.json)
 const CIDADES_DISPONIVEIS = [
   { value: 'GYN', label: 'Goiânia (GYN)' },
   { value: 'GRU', label: 'São Paulo (GRU)' },
   { value: 'BSB', label: 'Brasília (BSB)' },
   { value: 'ATL', label: 'Atlanta (ATL)' },
   { value: 'ORD', label: 'Chicago (ORD)' },
-  { value: 'MSY', label: 'New Orleans (MSY)' }
+  { value: 'MSY', label: 'New Orleans (MSY)' },
+  { value: 'MIA', label: 'Miami (MIA)' },
+  { value: 'JFK', label: 'Nova York (JFK)' }
 ];
 
 interface TravelFormData {
+  ida_volta: boolean;
+  origem: string;
+  destino: string;
+  locais_visitar: string[];
   data_ida: string;
   data_retorno: string;
-  cidade_origem_ida: string;
-  cidade_destino: string;
-  cidade_origem_retorno: string;
-  cidade_destino_retorno: string;
-  numero_viajantes: number;
-  perfil_viajante: string;
-  necessita_hospedagem: boolean;
-  categoria_hotel: number;
-  necessita_carro: boolean;
-  tipo_carro: string;
-  incluir_alimentacao: boolean;
-  tipo_custo_alimentacao: 'nivel' | 'valor';
-  nivel_alimentacao: string;
-  valor_diario_alimentacao: number;
-  peso_custo: number;
-  peso_tempo: number;
-  peso_conforto: number;
-  orcamento_maximo: number;
+  numero_adultos: number;
+  numero_criancas: number;
+  dias_por_cidade: Record<string, number>;
+  incluir_refeicao: boolean;
+  incluir_hospedagem: boolean;
+  incluir_transporte: boolean;
 }
 
 // ==============================|| SMARTTRIP AI - VIAGENS ||============================== //
@@ -63,26 +57,18 @@ interface TravelFormData {
 export default function SmartTripViagens() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<TravelFormData>({
+    ida_volta: true,
+    origem: '',
+    destino: '',
+    locais_visitar: [],
     data_ida: '',
     data_retorno: '',
-    cidade_origem_ida: '',
-    cidade_destino: '',
-    cidade_origem_retorno: '',
-    cidade_destino_retorno: '',
-    numero_viajantes: 1,
-    perfil_viajante: 'padrao',
-    necessita_hospedagem: true,
-    categoria_hotel: 3,
-    necessita_carro: false,
-    tipo_carro: 'economico',
-    incluir_alimentacao: true,
-    tipo_custo_alimentacao: 'nivel',
-    nivel_alimentacao: 'medio',
-    valor_diario_alimentacao: 0,
-    peso_custo: 0.5,
-    peso_tempo: 0.3,
-    peso_conforto: 0.2,
-    orcamento_maximo: 10000
+    numero_adultos: 1,
+    numero_criancas: 0,
+    dias_por_cidade: {},
+    incluir_refeicao: true,
+    incluir_hospedagem: true,
+    incluir_transporte: true
   });
 
   const handleInputChange = (field: keyof TravelFormData) => (event: any) => {
@@ -94,10 +80,60 @@ export default function SmartTripViagens() {
     setFormData({ ...formData, [field]: event.target.checked });
   };
 
-  const handleSliderChange = (field: keyof TravelFormData) => (_event: any, value: number | number[]) => {
-    setFormData({ ...formData, [field]: value });
+  // Atualizar locais_visitar quando origem ou destino mudam
+  useEffect(() => {
+    // Remove origem e destino da lista de locais a visitar
+    const locaisAtualizados = formData.locais_visitar.filter(
+      (local) => local !== formData.origem && local !== formData.destino
+    );
+    
+    // Só atualiza se houve mudança
+    if (locaisAtualizados.length !== formData.locais_visitar.length) {
+      setFormData({ ...formData, locais_visitar: locaisAtualizados });
+    }
+  }, [formData.origem, formData.destino]);
+
+  // Calcular total de dias da viagem
+  const getTotalDiasViagem = (): number => {
+    if (!formData.data_ida || !formData.data_retorno || !formData.ida_volta) {
+      return 0;
+    }
+    const dataIda = new Date(formData.data_ida);
+    const dataRetorno = new Date(formData.data_retorno);
+    const diffTime = Math.abs(dataRetorno.getTime() - dataIda.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
   };
 
+  // Calcular dias já alocados
+  const getDiasAlocados = (): number => {
+    return Object.values(formData.dias_por_cidade).reduce((sum, dias) => sum + (dias || 0), 0);
+  };
+
+  // Handler para alterar dias de uma cidade
+  const handleDiasCidadeChange = (cidade: string) => (event: any) => {
+    const dias = parseInt(event.target.value) || 0;
+    setFormData({
+      ...formData,
+      dias_por_cidade: {
+        ...formData.dias_por_cidade,
+        [cidade]: dias
+      }
+    });
+  };
+
+  // Obter lista de cidades envolvidas na viagem
+  const getCidadesViagem = (): string[] => {
+    const cidades: string[] = [];
+    if (formData.origem) cidades.push(formData.origem);
+    if (formData.destino && formData.destino !== formData.origem) cidades.push(formData.destino);
+    formData.locais_visitar.forEach((local) => {
+      if (!cidades.includes(local)) cidades.push(local);
+    });
+    return cidades;
+  };
+
+  // 
   // Obter data de hoje no formato YYYY-MM-DD
   const getToday = () => {
     const today = new Date();
@@ -113,21 +149,7 @@ export default function SmartTripViagens() {
   const handleSubmit = () => {
     console.log('Dados do formulário:', formData);
     // Aqui você pode enviar os dados para o backend
-    // Por enquanto, vamos apenas redirecionar para a página de resultados
     navigate('/resultados');
-  };
-
-  // Normalizar pesos automaticamente
-  const normalizarPesos = () => {
-    const total = formData.peso_custo + formData.peso_tempo + formData.peso_conforto;
-    if (total > 0) {
-      setFormData({
-        ...formData,
-        peso_custo: formData.peso_custo / total,
-        peso_tempo: formData.peso_tempo / total,
-        peso_conforto: formData.peso_conforto / total
-      });
-    }
   };
 
   return (
@@ -147,10 +169,63 @@ export default function SmartTripViagens() {
             </Stack>
           </Grid>
 
-          {/* Bloco 1 - Definição da viagem (obrigatório) */}
+          {/* Bloco 0 - Tipo de Viagem (PRIMEIRO CAMPO) */}
           <Grid size={12}>
-            <MainCard title="1. Dados Gerais da Viagem" secondary={<Calendar variant="Bold" />}>
+            <MainCard title="1. Tipo de Viagem" secondary={<Airplane variant="Bold" />}>
               <Grid container spacing={3}>
+                <Grid size={12}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={formData.ida_volta}
+                        onChange={handleSwitchChange('ida_volta')}
+                        color="primary"
+                      />
+                    }
+                    label={
+                      <Box>
+                        <Typography variant="body1" fontWeight={500}>
+                          Viagem de ida e volta
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {formData.ida_volta ? 'Você selecionará data de retorno' : 'Apenas ida - sem retorno'}
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                </Grid>
+              </Grid>
+            </MainCard>
+          </Grid>
+
+          {/* Bloco 1 - Dados Gerais da Viagem */}
+          <Grid size={12}>
+            <MainCard title="2. Dados Gerais da Viagem" secondary={<Location variant="Bold" />}>
+              <Grid container spacing={3}>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <FormControl fullWidth required>
+                    <InputLabel>Cidade de Origem</InputLabel>
+                    <Select value={formData.origem} onChange={handleInputChange('origem')} label="Cidade de Origem">
+                      {CIDADES_DISPONIVEIS.filter((cidade) => cidade.value !== formData.destino).map((cidade) => (
+                        <MenuItem key={cidade.value} value={cidade.value}>
+                          {cidade.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <FormControl fullWidth required>
+                    <InputLabel>Cidade de Destino</InputLabel>
+                    <Select value={formData.destino} onChange={handleInputChange('destino')} label="Cidade de Destino">
+                      {CIDADES_DISPONIVEIS.filter((cidade) => cidade.value !== formData.origem).map((cidade) => (
+                        <MenuItem key={cidade.value} value={cidade.value}>
+                          {cidade.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
                 <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     fullWidth
@@ -158,7 +233,7 @@ export default function SmartTripViagens() {
                     type="date"
                     value={formData.data_ida}
                     onChange={handleInputChange('data_ida')}
-                    slotProps={{ 
+                    slotProps={{
                       inputLabel: { shrink: true },
                       htmlInput: { min: getToday() }
                     }}
@@ -168,313 +243,176 @@ export default function SmartTripViagens() {
                 <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     fullWidth
-                    label="Data de Retorno"
+                    label={formData.ida_volta ? 'Data de Retorno' : 'Data de Retorno (Não Aplicável)'}
                     type="date"
-                    value={formData.data_retorno}
+                    value={formData.ida_volta ? formData.data_retorno : ''}
                     onChange={handleInputChange('data_retorno')}
-                    slotProps={{ 
+                    slotProps={{
                       inputLabel: { shrink: true },
                       htmlInput: { min: getMinReturnDate() }
                     }}
-                    required
+                    disabled={!formData.ida_volta}
+                    required={formData.ida_volta}
+                    helperText={!formData.ida_volta ? 'Disponível apenas para viagens de ida e volta' : ''}
                   />
                 </Grid>
-                <Grid size={{ xs: 12, md: 3 }}>
-                  <FormControl fullWidth required>
-                    <InputLabel>Cidade de Origem (Ida)</InputLabel>
-                    <Select value={formData.cidade_origem_ida} onChange={handleInputChange('cidade_origem_ida')} label="Cidade de Origem (Ida)">
-                      {CIDADES_DISPONIVEIS.map((cidade) => (
-                        <MenuItem key={cidade.value} value={cidade.value}>
-                          {cidade.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid size={{ xs: 12, md: 3 }}>
-                  <FormControl fullWidth required>
-                    <InputLabel>Cidade de Destino (Ida)</InputLabel>
-                    <Select value={formData.cidade_destino} onChange={handleInputChange('cidade_destino')} label="Cidade de Destino (Ida)">
-                      {CIDADES_DISPONIVEIS.map((cidade) => (
-                        <MenuItem key={cidade.value} value={cidade.value}>
-                          {cidade.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid size={{ xs: 12, md: 3 }}>
-                  <FormControl fullWidth>
-                    <InputLabel>Cidade de Origem (Retorno)</InputLabel>
-                    <Select
-                      value={formData.cidade_origem_retorno}
-                      onChange={handleInputChange('cidade_origem_retorno')}
-                      label="Cidade de Origem (Retorno)"
-                    >
-                      <MenuItem value="">
-                        <em>Mesmo que destino da ida</em>
-                      </MenuItem>
-                      {CIDADES_DISPONIVEIS.map((cidade) => (
-                        <MenuItem key={cidade.value} value={cidade.value}>
-                          {cidade.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid size={{ xs: 12, md: 3 }}>
-                  <FormControl fullWidth>
-                    <InputLabel>Cidade de Destino (Retorno)</InputLabel>
-                    <Select
-                      value={formData.cidade_destino_retorno}
-                      onChange={handleInputChange('cidade_destino_retorno')}
-                      label="Cidade de Destino (Retorno)"
-                    >
-                      <MenuItem value="">
-                        <em>Mesmo que origem da ida</em>
-                      </MenuItem>
-                      {CIDADES_DISPONIVEIS.map((cidade) => (
-                        <MenuItem key={cidade.value} value={cidade.value}>
-                          {cidade.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-              </Grid>
-            </MainCard>
-          </Grid>
-
-          {/* Bloco 2 - Perfil do viajante */}
-          <Grid size={12}>
-            <MainCard title="2. Perfil do Viajante" secondary={<User variant="Bold" />}>
-              <Grid container spacing={3}>
                 <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     fullWidth
-                    label="Número de Viajantes"
+                    label="Número de Adultos"
                     type="number"
-                    value={formData.numero_viajantes}
-                    onChange={handleInputChange('numero_viajantes')}
+                    value={formData.numero_adultos}
+                    onChange={handleInputChange('numero_adultos')}
                     slotProps={{ htmlInput: { min: 1 } }}
                     required
+                    helperText="Mínimo 1 adulto"
                   />
                 </Grid>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <FormControl fullWidth>
-                    <InputLabel>Perfil do Viajante</InputLabel>
-                    <Select value={formData.perfil_viajante} onChange={handleInputChange('perfil_viajante')} label="Perfil do Viajante">
-                      <MenuItem value="economico">Econômico</MenuItem>
-                      <MenuItem value="padrao">Padrão</MenuItem>
-                      <MenuItem value="conforto">Conforto</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-              </Grid>
-            </MainCard>
-          </Grid>
-
-          {/* Bloco 3 - Hospedagem */}
-          <Grid size={12}>
-            <MainCard title="3. Hospedagem" secondary={<Home variant="Bold" />}>
-              <Grid container spacing={3}>
-                <Grid size={12}>
-                  <FormControlLabel
-                    control={<Switch checked={formData.necessita_hospedagem} onChange={handleSwitchChange('necessita_hospedagem')} />}
-                    label="Preciso de hospedagem"
-                  />
-                </Grid>
-                {formData.necessita_hospedagem && (
-                  <>
-                    <Grid size={{ xs: 12, md: 6 }}>
-                      <FormControl fullWidth>
-                        <InputLabel>Categoria do Hotel</InputLabel>
-                        <Select value={formData.categoria_hotel} onChange={handleInputChange('categoria_hotel')} label="Categoria do Hotel">
-                          <MenuItem value={1}>1 Estrela</MenuItem>
-                          <MenuItem value={2}>2 Estrelas</MenuItem>
-                          <MenuItem value={3}>3 Estrelas</MenuItem>
-                          <MenuItem value={4}>4 Estrelas</MenuItem>
-                          <MenuItem value={5}>5 Estrelas</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Grid>
-                  </>
-                )}
-              </Grid>
-            </MainCard>
-          </Grid>
-
-          {/* Bloco 4 - Transporte local */}
-          <Grid size={12}>
-            <MainCard title="4. Transporte Local (Aluguel de Carro)" secondary={<Car variant="Bold" />}>
-              <Grid container spacing={3}>
-                <Grid size={12}>
-                  <FormControlLabel
-                    control={<Switch checked={formData.necessita_carro} onChange={handleSwitchChange('necessita_carro')} />}
-                    label="Preciso alugar um carro"
-                  />
-                </Grid>
-                {formData.necessita_carro && (
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <FormControl fullWidth>
-                      <InputLabel>Tipo de Carro</InputLabel>
-                      <Select value={formData.tipo_carro} onChange={handleInputChange('tipo_carro')} label="Tipo de Carro">
-                        <MenuItem value="economico">Econômico</MenuItem>
-                        <MenuItem value="sedan">Sedan</MenuItem>
-                        <MenuItem value="suv">SUV</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                )}
-              </Grid>
-            </MainCard>
-          </Grid>
-
-          {/* Bloco 5 - Alimentação */}
-          <Grid size={12}>
-            <MainCard title="5. Alimentação" secondary={<Cup variant="Bold" />}>
-              <Grid container spacing={3}>
-                <Grid size={12}>
-                  <FormControlLabel
-                    control={<Switch checked={formData.incluir_alimentacao} onChange={handleSwitchChange('incluir_alimentacao')} />}
-                    label="Incluir custo de alimentação"
-                  />
-                </Grid>
-                {formData.incluir_alimentacao && (
-                  <>
-                    <Grid size={12}>
-                      <FormControl>
-                        <Stack direction="row" spacing={2}>
-                          <Button
-                            variant={formData.tipo_custo_alimentacao === 'nivel' ? 'contained' : 'outlined'}
-                            onClick={() => setFormData({ ...formData, tipo_custo_alimentacao: 'nivel' })}
-                          >
-                            Por Nível
-                          </Button>
-                          <Button
-                            variant={formData.tipo_custo_alimentacao === 'valor' ? 'contained' : 'outlined'}
-                            onClick={() => setFormData({ ...formData, tipo_custo_alimentacao: 'valor' })}
-                          >
-                            Por Valor Diário
-                          </Button>
-                        </Stack>
-                      </FormControl>
-                    </Grid>
-                    {formData.tipo_custo_alimentacao === 'nivel' ? (
-                      <Grid size={{ xs: 12, md: 6 }}>
-                        <FormControl fullWidth>
-                          <InputLabel>Nível de Alimentação</InputLabel>
-                          <Select
-                            value={formData.nivel_alimentacao}
-                            onChange={handleInputChange('nivel_alimentacao')}
-                            label="Nível de Alimentação"
-                          >
-                            <MenuItem value="basico">Básico</MenuItem>
-                            <MenuItem value="medio">Médio</MenuItem>
-                            <MenuItem value="premium">Premium</MenuItem>
-                          </Select>
-                        </FormControl>
-                      </Grid>
-                    ) : (
-                      <Grid size={{ xs: 12, md: 6 }}>
-                        <TextField
-                          fullWidth
-                          label="Valor Diário por Pessoa (R$)"
-                          type="number"
-                          value={formData.valor_diario_alimentacao}
-                          onChange={handleInputChange('valor_diario_alimentacao')}
-                          slotProps={{ htmlInput: { min: 0 } }}
-                          helperText="Informe quanto você planeja gastar com alimentação por dia"
-                        />
-                      </Grid>
-                    )}
-                  </>
-                )}
-              </Grid>
-            </MainCard>
-          </Grid>
-
-          {/* Bloco 6 - Preferências de otimização */}
-          <Grid size={12}>
-            <MainCard title="6. Preferências de Otimização" secondary={<Setting2 variant="Bold" />}>
-              <Stack spacing={4}>
-                <Box>
-                  <Typography gutterBottom>Peso - Custo: {(formData.peso_custo * 100).toFixed(0)}%</Typography>
-                  <Slider
-                    value={formData.peso_custo}
-                    onChange={handleSliderChange('peso_custo')}
-                    step={0.1}
-                    min={0}
-                    max={1}
-                    valueLabelDisplay="auto"
-                    valueLabelFormat={(value) => `${(value * 100).toFixed(0)}%`}
-                  />
-                  <Typography variant="caption" color="text.secondary">
-                    Quanto menor o custo, mais importa
-                  </Typography>
-                </Box>
-
-                <Box>
-                  <Typography gutterBottom>Peso - Tempo: {(formData.peso_tempo * 100).toFixed(0)}%</Typography>
-                  <Slider
-                    value={formData.peso_tempo}
-                    onChange={handleSliderChange('peso_tempo')}
-                    step={0.1}
-                    min={0}
-                    max={1}
-                    valueLabelDisplay="auto"
-                    valueLabelFormat={(value) => `${(value * 100).toFixed(0)}%`}
-                  />
-                  <Typography variant="caption" color="text.secondary">
-                    Penaliza viagens longas
-                  </Typography>
-                </Box>
-
-                <Box>
-                  <Typography gutterBottom>Peso - Conforto: {(formData.peso_conforto * 100).toFixed(0)}%</Typography>
-                  <Slider
-                    value={formData.peso_conforto}
-                    onChange={handleSliderChange('peso_conforto')}
-                    step={0.1}
-                    min={0}
-                    max={1}
-                    valueLabelDisplay="auto"
-                    valueLabelFormat={(value) => `${(value * 100).toFixed(0)}%`}
-                  />
-                  <Typography variant="caption" color="text.secondary">
-                    Classe do voo, hotel, carro
-                  </Typography>
-                </Box>
-
-                <Button variant="outlined" onClick={normalizarPesos} sx={{ alignSelf: 'flex-start' }}>
-                  Normalizar Pesos
-                </Button>
-
-                <Divider />
-
-                <Typography variant="caption" color="text.secondary">
-                  Os pesos não precisam somar 1, você pode normalizar internamente
-                </Typography>
-              </Stack>
-            </MainCard>
-          </Grid>
-
-          {/* Bloco 7 - Restrições */}
-          <Grid size={12}>
-            <MainCard title="7. Restrições (Opcional)" secondary={<DollarCircle variant="Bold" />}>
-              <Grid container spacing={3}>
                 <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     fullWidth
-                    label="Orçamento Máximo (R$)"
+                    label="Número de Crianças"
                     type="number"
-                    value={formData.orcamento_maximo}
-                    onChange={handleInputChange('orcamento_maximo')}
+                    value={formData.numero_criancas}
+                    onChange={handleInputChange('numero_criancas')}
                     slotProps={{ htmlInput: { min: 0 } }}
+                    helperText="Opcional"
                   />
-                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                    Deixe 0 para não limitar
-                  </Typography>
+                </Grid>
+              </Grid>
+            </MainCard>
+          </Grid>
+
+          {/* Bloco 2 - Locais que deseja visitar */}
+          <Grid size={12}>
+            <MainCard title="3. Locais que Deseja Visitar (Opcional)" secondary={<Calendar variant="Bold" />}>
+              <Grid container spacing={3}>
+                <Grid size={12}>
+                  <FormControl fullWidth>
+                    <InputLabel>Cidades</InputLabel>
+                    <Select
+                      multiple
+                      value={formData.locais_visitar}
+                      onChange={(event) => {
+                        const value = event.target.value as string[];
+                        setFormData({ ...formData, locais_visitar: value });
+                      }}
+                      input={<OutlinedInput label="Cidades" />}
+                      renderValue={(selected: string[]) => (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {selected.map((value: string) => {
+                            const cidade = CIDADES_DISPONIVEIS.find((c) => c.value === value);
+                            return <Chip key={value} label={cidade?.label || value} size="small" />;
+                          })}
+                        </Box>
+                      )}
+                    >
+                      {CIDADES_DISPONIVEIS.filter(
+                        (cidade) => cidade.value !== formData.origem && cidade.value !== formData.destino
+                      ).map((cidade) => (
+                        <MenuItem key={cidade.value} value={cidade.value}>
+                          {cidade.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                {/* Dias por Cidade - Só exibe se houver cidades selecionadas */}
+                {formData.locais_visitar.length > 0 && (
+                  <>
+                    <Grid size={12}>
+                      <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+                        Dias por Cidade (Opcional)
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        Defina quantos dias deseja ficar em cada cidade. Deixe em branco para otimização automática.
+                      </Typography>
+                      {formData.ida_volta && getTotalDiasViagem() > 0 && (
+                        <Box sx={{ mt: 2, p: 2, bgcolor: 'primary.lighter', borderRadius: 1 }}>
+                          <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
+                            <Typography variant="body2">
+                              <strong>Total de dias da viagem:</strong> {getTotalDiasViagem()} dias
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              color={getDiasAlocados() > getTotalDiasViagem() ? 'error' : 'success.main'}
+                            >
+                              <strong>Dias alocados:</strong> {getDiasAlocados()} dias
+                            </Typography>
+                          </Stack>
+                          {getDiasAlocados() > getTotalDiasViagem() && (
+                            <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1 }}>
+                              ⚠️ A soma dos dias excede o total da viagem!
+                            </Typography>
+                          )}
+                        </Box>
+                      )}
+                    </Grid>
+                    {formData.locais_visitar.map((cidade) => {
+                      const cidadeInfo = CIDADES_DISPONIVEIS.find((c) => c.value === cidade);
+                      return (
+                        <Grid key={cidade} size={{ xs: 12, sm: 6, md: 4 }}>
+                          <TextField
+                            fullWidth
+                            label={cidadeInfo?.label || cidade}
+                            type="number"
+                            value={formData.dias_por_cidade[cidade] || ''}
+                            onChange={handleDiasCidadeChange(cidade)}
+                            slotProps={{
+                              htmlInput: {
+                                min: 0,
+                                max: getTotalDiasViagem() || undefined
+                              }
+                            }}
+                            helperText="Dias de estadia"
+                            error={formData.ida_volta && getDiasAlocados() > getTotalDiasViagem()}
+                          />
+                        </Grid>
+                      );
+                    })}
+                  </>
+                )}
+              </Grid>
+            </MainCard>
+          </Grid>
+
+          {/* Bloco 3 - Incluir na Pesquisa */}
+          <Grid size={12}>
+            <MainCard title="4. Incluir na Pesquisa" secondary={<Location variant="Bold" />}>
+              <Grid container spacing={3}>
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <FormControlLabel
+                    control={<Switch checked={formData.incluir_hospedagem} onChange={handleSwitchChange('incluir_hospedagem')} />}
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Home variant="Bold" size={20} />
+                        <Typography>Hospedagem</Typography>
+                      </Box>
+                    }
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <FormControlLabel
+                    control={<Switch checked={formData.incluir_refeicao} onChange={handleSwitchChange('incluir_refeicao')} />}
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Cup variant="Bold" size={20} />
+                        <Typography>Refeições</Typography>
+                      </Box>
+                    }
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <FormControlLabel
+                    control={<Switch checked={formData.incluir_transporte} onChange={handleSwitchChange('incluir_transporte')} />}
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Car variant="Bold" size={20} />
+                        <Typography>Transporte Local</Typography>
+                      </Box>
+                    }
+                  />
                 </Grid>
               </Grid>
             </MainCard>
