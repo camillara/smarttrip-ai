@@ -318,8 +318,8 @@ export default function SmartTripViagens() {
                   </FormControl>
                 </Grid>
 
-                {/* Dias por Cidade - Só exibe se houver cidades selecionadas */}
-                {formData.locais_visitar.length > 0 && (
+                {/* Dias por Cidade - Exibe destino + cidades intermediárias */}
+                {(formData.destino || formData.locais_visitar.length > 0) && (
                   <>
                     <Grid size={12}>
                       <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
@@ -349,6 +349,29 @@ export default function SmartTripViagens() {
                         </Box>
                       )}
                     </Grid>
+                    
+                    {/* Campo para cidade de destino */}
+                    {formData.destino && (
+                      <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                        <TextField
+                          fullWidth
+                          label={`${CIDADES_DISPONIVEIS.find((c) => c.value === formData.destino)?.label || formData.destino} (Destino)`}
+                          type="number"
+                          value={formData.dias_por_cidade[formData.destino] || ''}
+                          onChange={handleDiasCidadeChange(formData.destino)}
+                          slotProps={{
+                            htmlInput: {
+                              min: 0,
+                              max: getTotalDiasViagem() || undefined
+                            }
+                          }}
+                          helperText="Dias de estadia"
+                          error={formData.ida_volta && getDiasAlocados() > getTotalDiasViagem()}
+                        />
+                      </Grid>
+                    )}
+
+                    {/* Campos para cidades intermediárias */}
                     {formData.locais_visitar.map((cidade) => {
                       const cidadeInfo = CIDADES_DISPONIVEIS.find((c) => c.value === cidade);
                       return (
