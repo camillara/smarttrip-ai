@@ -118,6 +118,12 @@ export default function SmartTripResultados() {
     return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
+  };
+
   const formatDuracao = (minutos: number | null) => {
     if (!minutos) return 'N/A';
     const horas = Math.floor(minutos / 60);
@@ -320,7 +326,7 @@ export default function SmartTripResultados() {
                         </TableCell>
                         <TableCell>
                           <Stack>
-                            <Typography variant="body2">{trecho.voo.data || 'N/A'}</Typography>
+                            <Typography variant="body2">{formatDate(trecho.voo.data)}</Typography>
                             <Typography variant="caption" color="text.secondary">
                               {trecho.voo.saida || 'N/A'}
                             </Typography>
@@ -362,7 +368,7 @@ export default function SmartTripResultados() {
                         </TableCell>
                         <TableCell>
                           <Stack>
-                            <Typography variant="body2">{trecho.voo.data || 'N/A'}</Typography>
+                            <Typography variant="body2">{formatDate(trecho.voo.data)}</Typography>
                             <Typography variant="caption" color="text.secondary">
                               {trecho.voo.saida || 'N/A'}
                             </Typography>
