@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { optimizeCompleteTrip, getAvailableDates, type AvailableDates } from 'services/api';
+import { 
+  optimizeCompleteTrip, 
+  getAvailableDates, 
+  optimizeTripWithMode,
+  type AvailableDates, 
+  type SearchMode,
+  type TravelResult,
+  type MultipleOptimizeResponse 
+} from 'services/api';
 import { useTrip } from 'contexts/TripContext';
 
 // material-ui
@@ -19,6 +27,9 @@ import Switch from '@mui/material/Switch';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Chip from '@mui/material/Chip';
 import OutlinedInput from '@mui/material/OutlinedInput';
+import Radio from '@mui/material/Radio';
+import RadioGroup from '@mui/material/RadioGroup';
+import Alert from '@mui/material/Alert';
 
 // project-imports
 import MainCard from 'components/MainCard';
@@ -60,10 +71,11 @@ interface TravelFormData {
 
 export default function SmartTripViagens() {
   const navigate = useNavigate();
-  const { setResult } = useTrip();
+  const { setResult, setMultipleResult, setSearchMode: setContextSearchMode } = useTrip();
   const [loading, setLoading] = useState<boolean>(false);
   const [loadingDates, setLoadingDates] = useState<boolean>(true);
   const [availableDates, setAvailableDates] = useState<AvailableDates | null>(null);
+  const [searchMode, setSearchMode] = useState<SearchMode>('multiple');
   const [formData, setFormData] = useState<TravelFormData>({
     ida_volta: true,
     origem: '',
@@ -230,13 +242,30 @@ export default function SmartTripViagens() {
         };
       }
 
-      const resultado = await optimizeCompleteTrip(payloadIda, payloadVolta);
+      // Chama a API de acordo com o modo selecionado
+      const resultadoIda = await optimizeTripWithMode(payloadIda, searchMode);
+      let resultadoVolta = null;
 
-      // 🔑 salva no contexto (ida + volta)
-      setResult({
-        ida: resultado.ida,
-        volta: resultado.volta
-      });
+      if (payloadVolta) {
+        resultadoVolta = await optimizeTripWithMode(payloadVolta, searchMode);
+      }
+
+      // Salva no contexto de acordo com o tipo de resultado
+      setContextSearchMode(searchMode);
+
+      if (searchMode === 'single') {
+        setResult({
+          ida: resultadoIda as TravelResult,
+          volta: resultadoVolta as TravelResult | null
+        });
+        setMultipleResult(null);
+      } else {
+        setMultipleResult({
+          ida: resultadoIda as MultipleOptimizeResponse,
+          volta: resultadoVolta as MultipleOptimizeResponse | null
+        });
+        setResult(null);
+      }
 
       navigate('/resultados');
     } catch (error) {
@@ -262,6 +291,95 @@ export default function SmartTripViagens() {
                 Preencha os campos abaixo para encontrar a melhor opção de viagem usando inteligência artificial
               </Typography>
             </Stack>
+          </Grid>
+
+          {/* Modo de Busca */}
+          <Grid size={12}>
+            <MainCard>
+              <Box sx={{ p: 2 }}>
+                <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>
+                  🎯 Modo de Busca
+                </Typography>
+                <RadioGroup
+                  value={searchMode}
+                  onChange={(e) => setSearchMode(e.target.value as SearchMode)}
+                >
+                  <Stack spacing={2}>
+                    <Box
+                      sx={{
+                        p: 2,
+                        borderRadius: 2,
+                        border: '2px solid',
+                        borderColor: searchMode === 'single' ? 'primary.main' : 'divider',
+                        backgroundColor: searchMode === 'single' ? 'primary.lighter' : 'background.paper',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          borderColor: 'primary.main',
+                          boxShadow: 2
+                        }
+                      }}
+                      onClick={() => setSearchMode('single')}
+                    >
+                      <FormControlLabel
+                        value="single"
+                        control={<Radio />}
+                        label={
+                          <Box>
+                            <Typography variant="body1" fontWeight={700}>
+                              🎯 Resultado Otimizado
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Retorna a melhor rota encontrada em até 60 segundos. Ideal para buscas rápidas.
+                            </Typography>
+                          </Box>
+                        }
+                        sx={{ width: '100%', m: 0 }}
+                      />
+                    </Box>
+
+                    <Box
+                      sx={{
+                        p: 2,
+                        borderRadius: 2,
+                        border: '2px solid',
+                        borderColor: searchMode === 'multiple' ? 'primary.main' : 'divider',
+                        backgroundColor: searchMode === 'multiple' ? 'primary.lighter' : 'background.paper',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          borderColor: 'primary.main',
+                          boxShadow: 2
+                        }
+                      }}
+                      onClick={() => setSearchMode('multiple')}
+                    >
+                      <FormControlLabel
+                        value="multiple"
+                        control={<Radio />}
+                        label={
+                          <Box>
+                            <Typography variant="body1" fontWeight={700}>
+                              📊 Comparar 3 Opções (Recomendado)
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Retorna 3 opções diferentes para você escolher (1-3 minutos). Melhor para análise detalhada.
+                            </Typography>
+                          </Box>
+                        }
+                        sx={{ width: '100%', m: 0 }}
+                      />
+                    </Box>
+                  </Stack>
+                </RadioGroup>
+
+                {searchMode === 'multiple' && (
+                  <Alert severity="info" sx={{ mt: 2 }}>
+                    <strong>Dica:</strong> O modo de comparação gera diferentes combinações de rotas para você avaliar qual se adequa melhor às suas necessidades.
+                  </Alert>
+                )}
+              </Box>
+            </MainCard>
           </Grid>
 
           {/* Bloco 0 - Tipo de Viagem (PRIMEIRO CAMPO) */}
@@ -604,10 +722,30 @@ export default function SmartTripViagens() {
 
           {/* Botão de submissão */}
           <Grid size={12}>
-            <Stack direction="row" spacing={2} justifyContent="center">
-              <Button variant="contained" size="large" startIcon={<Airplane />} onClick={handleSubmit} sx={{ px: 6, py: 1.5 }}>
-                Buscar Melhores Opções
+            <Stack spacing={2} alignItems="center">
+              <Button 
+                variant="contained" 
+                size="large" 
+                startIcon={loading ? <Clock variant="Bold" /> : <Airplane variant="Bold" />}
+                onClick={handleSubmit} 
+                disabled={loading}
+                sx={{ px: 6, py: 1.5 }}
+              >
+                {loading ? (
+                  searchMode === 'single' 
+                    ? '⏳ Buscando viagem...' 
+                    : '⏳ Gerando 3 opções...'
+                ) : (
+                  '🔍 Buscar Viagens'
+                )}
               </Button>
+              {loading && (
+                <Typography variant="body2" color="text.secondary">
+                  {searchMode === 'single' 
+                    ? 'Otimizando sua viagem. Isso pode levar até 60 segundos...'
+                    : 'Gerando 3 opções para você comparar. Isso pode levar de 1 a 3 minutos...'}
+                </Typography>
+              )}
             </Stack>
           </Grid>
         </Grid>

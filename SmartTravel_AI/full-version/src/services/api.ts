@@ -18,6 +18,7 @@ export interface TripPayload {
   incluir_refeicao: boolean;
   incluir_hospedagem: boolean;
   incluir_transporte: boolean;
+  numero_opcoes?: number; // Apenas para /optimize-multiple
 }
 
 // Interface para o resultado da otimização
@@ -67,6 +68,47 @@ export interface TravelResult {
       total: number;
     }>;
   };
+  metadata?: {
+    nivel_otimizacao: 'otima' | 'boa' | 'viavel' | 'basica' | 'erro';
+    nota: string;
+    tempo_computacao: number;
+  };
+}
+
+// Interface para pontuação de uma opção
+export interface Pontuacao {
+  custo: number;
+  tempo: number;
+  conforto: number;
+  geral: number;
+}
+
+// Interface para uma opção de viagem (modo múltiplo)
+export interface OpcaoViagem {
+  id: number;
+  ranking: number;
+  titulo: string;
+  descricao: string;
+  rota: TravelResult['rota'];
+  custos: TravelResult['custos'];
+  detalhes: TravelResult['detalhes'];
+  custo_total: number;
+  tempo_total_viagem: number;
+  numero_escalas: number;
+  pontuacao: Pontuacao;
+  vantagens: string[];
+  desvantagens: string[];
+}
+
+// Interface para o resultado de otimização múltipla
+export interface MultipleOptimizeResponse {
+  opcoes: OpcaoViagem[];
+  recomendacao: number;
+  metadata: {
+    tempo_computacao: number;
+    numero_opcoes_geradas: number;
+    numero_opcoes_solicitadas: number;
+  };
 }
 
 // Função para buscar datas disponíveis
@@ -96,6 +138,41 @@ export async function optimizeTrip(payload: TripPayload): Promise<TravelResult> 
   }
 
   return response.json();
+}
+
+// Função para otimizar viagem com múltiplas opções
+export async function optimizeTripMultiple(payload: TripPayload): Promise<MultipleOptimizeResponse> {
+  const payloadWithOptions = { ...payload, numero_opcoes: 3 };
+  
+  const response = await fetch("http://127.0.0.1:8000/optimize-multiple", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payloadWithOptions),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: "Erro desconhecido" }));
+    throw new Error(error.detail || "Erro ao otimizar viagem");
+  }
+
+  return response.json();
+}
+
+// Tipo para modo de busca
+export type SearchMode = 'single' | 'multiple';
+
+// Função unificada para otimizar viagem
+export async function optimizeTripWithMode(
+  payload: TripPayload,
+  mode: SearchMode
+): Promise<TravelResult | MultipleOptimizeResponse> {
+  if (mode === 'single') {
+    return optimizeTrip(payload);
+  } else {
+    return optimizeTripMultiple(payload);
+  }
 }
 
 // Função para otimizar viagem completa (ida + volta)
