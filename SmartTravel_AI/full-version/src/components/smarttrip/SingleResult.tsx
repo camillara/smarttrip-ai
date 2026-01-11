@@ -21,6 +21,16 @@ interface SingleResultProps {
 }
 
 const SingleResult: React.FC<SingleResultProps> = ({ result }) => {
+  // Função para formatar valores monetários no padrão brasileiro
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
   return (
     <Box>
       {/* Badge de Otimização */}
@@ -37,35 +47,35 @@ const SingleResult: React.FC<SingleResultProps> = ({ result }) => {
                 💰 Custo Total
               </Typography>
               <Typography variant="h2" color="success.main" sx={{ mb: 3, fontWeight: 700 }}>
-                R$ {result.custos.total.toFixed(2)}
+                {formatCurrency(result.custos.total)}
               </Typography>
 
               <Stack spacing={1.5}>
                 <Stack direction="row" justifyContent="space-between">
                   <Typography variant="body2">✈️ Voos:</Typography>
                   <Typography variant="body2" fontWeight={600}>
-                    R$ {result.custos.voos.toFixed(2)}
+                    {formatCurrency(result.custos.voos)}
                   </Typography>
                 </Stack>
                 <Divider />
                 <Stack direction="row" justifyContent="space-between">
                   <Typography variant="body2">🏨 Hospedagem:</Typography>
                   <Typography variant="body2" fontWeight={600}>
-                    R$ {result.custos.hospedagem.toFixed(2)}
+                    {formatCurrency(result.custos.hospedagem)}
                   </Typography>
                 </Stack>
                 <Divider />
                 <Stack direction="row" justifyContent="space-between">
                   <Typography variant="body2">🍽️ Alimentação:</Typography>
                   <Typography variant="body2" fontWeight={600}>
-                    R$ {result.custos.alimentacao.toFixed(2)}
+                    {formatCurrency(result.custos.alimentacao)}
                   </Typography>
                 </Stack>
                 <Divider />
                 <Stack direction="row" justifyContent="space-between">
                   <Typography variant="body2">🚗 Transporte:</Typography>
                   <Typography variant="body2" fontWeight={600}>
-                    R$ {result.custos.transporte.toFixed(2)}
+                    {formatCurrency(result.custos.transporte)}
                   </Typography>
                 </Stack>
               </Stack>
@@ -117,7 +127,7 @@ const SingleResult: React.FC<SingleResultProps> = ({ result }) => {
                           </Typography>
                         </Box>
                         <Typography variant="h6" color="success.main" fontWeight={700}>
-                          R$ {trecho.voo.preco.toFixed(2)}
+                          {formatCurrency(trecho.voo.preco)}
                         </Typography>
                       </Stack>
                       <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
@@ -150,7 +160,7 @@ const SingleResult: React.FC<SingleResultProps> = ({ result }) => {
                         {hosp.cidade}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {hosp.diarias} diárias × R$ {hosp.diaria.toFixed(2)} = R$ {hosp.total.toFixed(2)}
+                        {hosp.diarias} diárias × {formatCurrency(hosp.diaria)} = {formatCurrency(hosp.total)}
                       </Typography>
                     </Box>
                   ))}
@@ -175,7 +185,7 @@ const SingleResult: React.FC<SingleResultProps> = ({ result }) => {
                         {alim.cidade}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {alim.diarias} dias × R$ {alim.custo_dia.toFixed(2)} = R$ {alim.total.toFixed(2)}
+                        {alim.diarias} dias × {formatCurrency(alim.custo_dia)} = {formatCurrency(alim.total)}
                       </Typography>
                     </Box>
                   ))}
@@ -200,7 +210,7 @@ const SingleResult: React.FC<SingleResultProps> = ({ result }) => {
                         {transp.cidade}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {transp.diarias} dias × R$ {transp.custo_dia.toFixed(2)} = R$ {transp.total.toFixed(2)}
+                        {transp.diarias} dias × {formatCurrency(transp.custo_dia)} = {formatCurrency(transp.total)}
                       </Typography>
                     </Box>
                   ))}

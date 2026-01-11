@@ -25,6 +25,16 @@ interface OptionComparisonProps {
 }
 
 const OptionComparison: React.FC<OptionComparisonProps> = ({ opcoes, recomendacao, onSelect }) => {
+  // Função para formatar valores monetários no padrão brasileiro
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
   return (
     <Grid container spacing={3}>
       {opcoes.map((opcao) => {
@@ -76,7 +86,7 @@ const OptionComparison: React.FC<OptionComparisonProps> = ({ opcoes, recomendaca
                       💰 Custo Total:
                     </Typography>
                     <Typography variant="h5" color="success.main" fontWeight={700}>
-                      R$ {opcao.custo_total.toFixed(2)}
+                      {formatCurrency(opcao.custo_total)}
                     </Typography>
                   </Stack>
 

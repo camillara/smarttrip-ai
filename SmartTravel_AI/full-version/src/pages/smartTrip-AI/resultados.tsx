@@ -31,6 +31,16 @@ export default function SmartTripResultados() {
   const [selectedOption, setSelectedOption] = useState<OpcaoViagem | null>(null);
   const [selectedVoltaOption, setSelectedVoltaOption] = useState<OpcaoViagem | null>(null);
 
+  // Função para formatar valores monetários no padrão brasileiro
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
   // Verificar se temos resultados
   const hasResults = result || multipleResult;
 
@@ -93,7 +103,7 @@ export default function SmartTripResultados() {
                   <Typography variant="body1" sx={{ opacity: 0.9 }}>
                     {searchMode === 'single' 
                       ? 'Melhor rota otimizada encontrada'
-                      : 'Compare as 3 melhores opções e escolha a ideal para você'}
+                      : 'Compare até 3 opções e escolha a ideal para você'}
                   </Typography>
                 </Stack>
                 <Button
@@ -139,9 +149,23 @@ export default function SmartTripResultados() {
               <Grid size={12}>
                 <Alert severity="success" sx={{ mt: 4 }}>
                   <Typography variant="h5" fontWeight={700}>
-                    💰 Custo Total da Viagem: R$ {(result.ida.custos.total + (result.volta?.custos.total || 0)).toFixed(2)}
+                    💰 Custo Total da Viagem: {formatCurrency(result.ida.custos.total + (result.volta?.custos.total || 0))}
                   </Typography>
                 </Alert>
+              </Grid>
+
+              {/* Botão para Dicas */}
+              <Grid size={12}>
+                <Stack direction="row" justifyContent="center" sx={{ mt: 4 }}>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    onClick={() => navigate('/dicas')}
+                    sx={{ px: 6, py: 1.5 }}
+                  >
+                    📝 Ver Dicas de Viagem
+                  </Button>
+                </Stack>
               </Grid>
             </>
           )}
@@ -156,7 +180,7 @@ export default function SmartTripResultados() {
                     ✈️ Opções de Ida
                   </Typography>
                   <Typography variant="body1" color="text.secondary">
-                    Analisamos diferentes combinações e selecionamos as 3 melhores rotas para você.
+                    Analisamos diferentes combinações e selecionamos até 3 melhores rotas para você.
                     A opção marcada com ⭐ é a mais recomendada.
                   </Typography>
                 </Box>
@@ -248,7 +272,7 @@ export default function SmartTripResultados() {
                   <Alert severity="info" sx={{ mt: 6 }}>
                     <Typography variant="h5" fontWeight={700}>
                       💰 Custo Total Estimado:{' '}
-                      R$ {(selectedOption.custo_total + (selectedVoltaOption?.custo_total || 0)).toFixed(2)}
+                      {formatCurrency(selectedOption.custo_total + (selectedVoltaOption?.custo_total || 0))}
                     </Typography>
                     {!selectedVoltaOption && multipleResult.volta && (
                       <Typography variant="body2" sx={{ mt: 1 }}>
@@ -256,6 +280,22 @@ export default function SmartTripResultados() {
                       </Typography>
                     )}
                   </Alert>
+                </Grid>
+              )}
+
+              {/* Botão para Dicas */}
+              {selectedOption && (!multipleResult.volta || selectedVoltaOption) && (
+                <Grid size={12}>
+                  <Stack direction="row" justifyContent="center" sx={{ mt: 4 }}>
+                    <Button
+                      variant="contained"
+                      size="large"
+                      onClick={() => navigate('/dicas')}
+                      sx={{ px: 6, py: 1.5 }}
+                    >
+                      📝 Ver Dicas de Viagem
+                    </Button>
+                  </Stack>
                 </Grid>
               )}
             </>

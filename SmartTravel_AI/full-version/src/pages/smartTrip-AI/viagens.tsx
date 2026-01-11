@@ -77,7 +77,7 @@ export default function SmartTripViagens() {
   const [availableDates, setAvailableDates] = useState<AvailableDates | null>(null);
   const [searchMode, setSearchMode] = useState<SearchMode>('multiple');
   const [formData, setFormData] = useState<TravelFormData>({
-    ida_volta: true,
+    ida_volta: true, // Sempre true - ida e volta obrigatório
     origem: '',
     destino: '',
     locais_visitar: [],
@@ -208,6 +208,22 @@ export default function SmartTripViagens() {
 
   const handleSubmit = async () => {
     try {
+      // Validação: verificar se os dados da volta foram preenchidos
+      if (!formData.data_retorno) {
+        alert('⚠️ Por favor, informe a data de retorno. Viagens de ida e volta são obrigatórias.');
+        return;
+      }
+      
+      if (!formData.origem_volta) {
+        alert('⚠️ Por favor, selecione de qual cidade você parte na volta.');
+        return;
+      }
+      
+      if (!formData.destino_volta) {
+        alert('⚠️ Por favor, selecione para qual cidade você vai na volta.');
+        return;
+      }
+
       setLoading(true);
 
       const payloadIda = {
@@ -360,10 +376,10 @@ export default function SmartTripViagens() {
                         label={
                           <Box>
                             <Typography variant="body1" fontWeight={700}>
-                              📊 Comparar 3 Opções (Recomendado)
+                              📊 Comparar até 3 Opções (Recomendado)
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
-                              Retorna 3 opções diferentes para você escolher (1-3 minutos). Melhor para análise detalhada.
+                              Retorna até 3 opções diferentes para você escolher (1-3 minutos). Melhor para análise detalhada.
                             </Typography>
                           </Box>
                         }
@@ -375,39 +391,16 @@ export default function SmartTripViagens() {
 
                 {searchMode === 'multiple' && (
                   <Alert severity="info" sx={{ mt: 2 }}>
-                    <strong>Dica:</strong> O modo de comparação gera diferentes combinações de rotas para você avaliar qual se adequa melhor às suas necessidades.
+                    <strong>Dica:</strong> O modo de comparação gera diferentes combinações de rotas (até 3 opções) para você avaliar qual se adequa melhor às suas necessidades.
                   </Alert>
                 )}
               </Box>
             </MainCard>
           </Grid>
 
-          {/* Bloco 0 - Tipo de Viagem (PRIMEIRO CAMPO) */}
-          <Grid size={12}>
-            <MainCard title="1. Tipo de Viagem" secondary={<Airplane variant="Bold" />}>
-              <Grid container spacing={3}>
-                <Grid size={12}>
-                  <FormControlLabel
-                    control={<Switch checked={formData.ida_volta} onChange={handleSwitchChange('ida_volta')} color="primary" />}
-                    label={
-                      <Box>
-                        <Typography variant="body1" fontWeight={500}>
-                          Viagem de ida e volta
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {formData.ida_volta ? 'Você selecionará data de retorno' : 'Apenas ida - sem retorno'}
-                        </Typography>
-                      </Box>
-                    }
-                  />
-                </Grid>
-              </Grid>
-            </MainCard>
-          </Grid>
-
           {/* Bloco 1 - Dados Gerais da Viagem */}
           <Grid size={12}>
-            <MainCard title="2. Dados Gerais da Viagem" secondary={<Location variant="Bold" />}>
+            <MainCard title="1. Dados Gerais da Viagem" secondary={<Location variant="Bold" />}>
               <Grid container spacing={3}>
                 <Grid size={{ xs: 12, md: 6 }}>
                   <FormControl fullWidth required>
@@ -455,9 +448,9 @@ export default function SmartTripViagens() {
                 <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     fullWidth
-                    label={formData.ida_volta ? 'Data de Retorno' : 'Data de Retorno (Não Aplicável)'}
+                    label="Data de Retorno"
                     type="date"
-                    value={formData.ida_volta ? formData.data_retorno : ''}
+                    value={formData.data_retorno}
                     onChange={handleInputChange('data_retorno')}
                     slotProps={{
                       inputLabel: { shrink: true },
@@ -466,15 +459,9 @@ export default function SmartTripViagens() {
                         max: getMaxDate()
                       }
                     }}
-                    disabled={!formData.ida_volta || loadingDates}
-                    required={formData.ida_volta}
-                    helperText={
-                      !formData.ida_volta 
-                        ? 'Disponível apenas para viagens de ida e volta' 
-                        : loadingDates 
-                        ? 'Carregando datas disponíveis...' 
-                        : ''
-                    }
+                    disabled={loadingDates}
+                    required
+                    helperText={loadingDates ? 'Carregando datas disponíveis...' : 'Obrigatório - viagens de ida e volta'}
                   />
                 </Grid>
 
@@ -507,7 +494,7 @@ export default function SmartTripViagens() {
 
           {/* Bloco 2 - Locais que deseja visitar */}
           <Grid size={12}>
-            <MainCard title="3. Locais que Deseja Visitar (Opcional)" secondary={<Calendar variant="Bold" />}>
+            <MainCard title="2. Locais que Deseja Visitar (Opcional)" secondary={<Calendar variant="Bold" />}>
               <Grid container spacing={3}>
                 <Grid size={12}>
                   <FormControl fullWidth>
@@ -619,10 +606,9 @@ export default function SmartTripViagens() {
             </MainCard>
           </Grid>
 
-          {/* Bloco 3 - Dados da Volta (apenas se ida_volta = true) */}
-          {formData.ida_volta && (
-            <Grid size={12}>
-              <MainCard title="4. Dados da Volta" secondary={<Airplane variant="Bold" />}>
+          {/* Bloco 3 - Dados da Volta (sempre visível pois ida_volta é obrigatório) */}
+          <Grid size={12}>
+            <MainCard title="3. Dados da Volta" secondary={<Airplane variant="Bold" />}>
                 <Grid container spacing={3}>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <FormControl fullWidth required>
@@ -674,12 +660,11 @@ export default function SmartTripViagens() {
                 </Grid>
               </MainCard>
             </Grid>
-          )}
 
           {/* Bloco 4 - Incluir na Pesquisa */}
           <Grid size={12}>
             <MainCard
-              title={formData.ida_volta ? '5. Incluir na Pesquisa' : '4. Incluir na Pesquisa'}
+              title="4. Incluir na Pesquisa"
               secondary={<Location variant="Bold" />}
             >
               <Grid container spacing={3}>
@@ -734,7 +719,7 @@ export default function SmartTripViagens() {
                 {loading ? (
                   searchMode === 'single' 
                     ? '⏳ Buscando viagem...' 
-                    : '⏳ Gerando 3 opções...'
+                    : '⏳ Gerando até 3 opções...'
                 ) : (
                   '🔍 Buscar Viagens'
                 )}
@@ -743,7 +728,7 @@ export default function SmartTripViagens() {
                 <Typography variant="body2" color="text.secondary">
                   {searchMode === 'single' 
                     ? 'Otimizando sua viagem. Isso pode levar até 60 segundos...'
-                    : 'Gerando 3 opções para você comparar. Isso pode levar de 1 a 3 minutos...'}
+                    : 'Gerando até 3 opções para você comparar. Isso pode levar de 1 a 3 minutos...'}
                 </Typography>
               )}
             </Stack>
