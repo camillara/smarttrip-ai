@@ -40,11 +40,15 @@ O projeto é dividido em duas partes principais:
 
 ## 🎯 Funcionalidades Principais
 
+- **Dois Modos de Busca**:
+  - **🎯 Resultado Otimizado**: Retorna a melhor solução encontrada pelo algoritmo em até 60 segundos
+  - **📊 Comparar 3 Opções**: Apresenta 3 alternativas ranqueadas para você escolher (1-3 minutos)
 - **Otimização Inteligente**: Algoritmos avançados analisam milhares de combinações para encontrar a melhor solução
 - **Múltiplos Critérios**: Considere custo, tempo, conforto e flexibilidade simultaneamente
 - **Rotas Flexíveis**: Suporte a viagens de ida e volta com diferentes cidades de partida e retorno
 - **Cidades Intermediárias**: Possibilidade de visitar múltiplas cidades no trajeto
 - **Comparação Detalhada**: Visualize custos discriminados por categoria (voos, hospedagem, alimentação, transporte)
+- **Níveis de Otimização**: Sistema indica a qualidade da solução (ótima, boa, viável, básica)
 - **Interface Intuitiva**: Design moderno e responsivo com Material-UI
 
 ## 🚀 Como Executar o Projeto
@@ -114,10 +118,10 @@ npm start
 - `npm run lint:fix` - Corrige problemas do linter automaticamente
 - `npm run prettier` - Formata o código
 
-## 🔌 API Endpoints
+## 🔌 API Endpoints (v2.0)
 
 ### POST `/optimize`
-Otimiza rota de viagem com base nos parâmetros fornecidos.
+Retorna a melhor rota otimizada encontrada pelo algoritmo.
 
 **Request Body:**
 ```json
@@ -173,6 +177,67 @@ Otimiza rota de viagem com base nos parâmetros fornecidos.
     "hospedagem": [...],
     "alimentacao": [...],
     "transporte": [...]
+  },
+  "metadata": {
+    "nivel_otimizacao": "otima",
+    "nota": "Solução ótima encontrada",
+    "tempo_computacao": 12.5
+  }
+}
+```
+
+### POST `/optimize-multiple`
+Retorna 3 opções de viagem ranqueadas para comparação.
+
+**Request Body:**
+```json
+{
+  "ida_volta": false,
+  "origem": "GYN",
+  "destino": "ATL",
+  "locais_visitar": ["BSB"],
+  "data_ida": "2026-03-01",
+  "numero_adultos": 1,
+  "numero_criancas": 0,
+  "numero_opcoes": 3,
+  "dias_por_cidade": {
+    "BSB": 2,
+    "ATL": 3
+  },
+  "incluir_refeicao": true,
+  "incluir_hospedagem": true,
+  "incluir_transporte": true
+}
+```
+
+**Response:**
+```json
+{
+  "opcoes": [
+    {
+      "id": 1,
+      "ranking": 1,
+      "titulo": "Melhor Custo-Benefício",
+      "custo_total": 1850.50,
+      "tempo_total_min": 1440,
+      "numero_escalas": 1,
+      "pontuacao": {
+        "custo": 85,
+        "tempo": 75,
+        "conforto": 80
+      },
+      "vantagens": ["Menor custo", "Boa duração"],
+      "desvantagens": ["1 escala"],
+      "resultado": {
+        "rota": {...},
+        "custos": {...},
+        "detalhes": {...}
+      }
+    }
+  ],
+  "recomendacao": 1,
+  "metadata": {
+    "tempo_computacao": 45.2
   }
 }
 ```
@@ -203,11 +268,23 @@ Otimiza rota de viagem com base nos parâmetros fornecidos.
 
 ```
 SmartTrip-AI/
-├── backend/                    # API FastAPI
-│   ├── main.py                # Aplicação principal
-│   ├── requirements.txt       # Dependências Python
-│   ├── database.json          # Dados de voos, hospedagem, etc.
-│   └── ...
+### Modo: Resultado Otimizado (Single)
+1. **Planeje sua Viagem**: Preencha o formulário com origem, destino, datas e preferências
+2. **Selecione**: Escolha "🎯 Resultado Otimizado" no formulário
+3. **Aguarde**: O algoritmo processa e retorna a melhor solução em ~60 segundos
+4. **Visualize**: Veja a rota otimizada com badge de qualidade e custos detalhados
+
+### Modo: Comparar 3 Opções (Multiple)
+1. **Planeje sua Viagem**: Preencha o formulário com origem, destino, datas e preferências
+2. **Selecione**: Escolha "📊 Comparar 3 Opções" no formulário
+3. **Aguarde**: O algoritmo processa e retorna 3 alternativas em ~1-3 minutos
+4. **Compare**: Analise lado a lado as opções com pontuações, vantagens e desvantagens
+5. **Escolha**: Clique na opção desejada para ver detalhes completos
+6. **Visualize**: Veja custo total estimado e todos os detalhes da viagem
+
+### Recursos Adicionais
+- **Receba Dicas**: Obtenha recomendações personalizadas para sua viagem
+- **Sobre o Projeto**: Conheça mais sobre o SmartTrip AI
 ├── SmartTravel_AI/
 │   └── full-version/          # Frontend React
 │       ├── public/            # Arquivos estáticos
