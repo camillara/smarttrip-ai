@@ -204,8 +204,11 @@ export default function SmartTripViagens() {
 
       const resultado = await optimizeCompleteTrip(payloadIda, payloadVolta);
 
-      // 🔑 salva no contexto
-      setResult(resultado.ida);
+      // 🔑 salva no contexto (ida + volta)
+      setResult({
+        ida: resultado.ida,
+        volta: resultado.volta
+      });
 
       navigate('/resultados');
     } catch (error) {

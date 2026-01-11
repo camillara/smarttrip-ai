@@ -21,7 +21,7 @@ import Paper from '@mui/material/Paper';
 // project-imports
 import MainCard from 'components/MainCard';
 import { GRID_COMMON_SPACING } from 'config';
-import { useTrip } from 'contexts/TripContext';
+import { useTrip, CombinedTravelResult } from 'contexts/TripContext';
 
 // assets
 import { Airplane, ArrowRight, Car, Cup, DollarCircle, Home, Location } from 'iconsax-reactjs';
@@ -88,13 +88,6 @@ interface TravelResult {
   detalhes: Detalhes;
 }
 
-// Interface para resultado combinado (ida + volta)
-interface CombinedTravelResult {
-  ida: TravelResult;
-  volta: TravelResult | null;
-  custoTotal: number;
-}
-
 // Mapa de nomes de cidades
 const CIDADE_NOMES: Record<string, string> = {
   GYN: 'Goiânia',
@@ -113,12 +106,11 @@ export default function SmartTripResultados() {
   const navigate = useNavigate();
   const { result } = useTrip();
 
-  // Criar resultado combinado a partir do contexto
-  const combinedResult: CombinedTravelResult | null = result
+  // Criar resultado combinado com custo total calculado
+  const combinedResult: (CombinedTravelResult & { custoTotal: number }) | null = result
     ? {
-        ida: result,
-        volta: null, // Por enquanto, volta não está sendo armazenada no contexto
-        custoTotal: result.custos.total
+        ...result,
+        custoTotal: result.ida.custos.total + (result.volta ? result.volta.custos.voos : 0)
       }
     : null;
 
