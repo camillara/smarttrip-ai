@@ -21,6 +21,7 @@ import Paper from '@mui/material/Paper';
 // project-imports
 import MainCard from 'components/MainCard';
 import { GRID_COMMON_SPACING } from 'config';
+import { useTrip } from 'contexts/TripContext';
 
 // assets
 import { Airplane, ArrowRight, Car, Cup, DollarCircle, Home, Location } from 'iconsax-reactjs';
@@ -94,176 +95,6 @@ interface CombinedTravelResult {
   custoTotal: number;
 }
 
-// Função para combinar resultados de ida e volta
-const combineResults = (resultadoIda: TravelResult, resultadoVolta: TravelResult | null): CombinedTravelResult => {
-  // Custo total = todos os custos da ida + apenas voos da volta
-  const custoTotal = resultadoIda.custos.total + (resultadoVolta ? resultadoVolta.custos.voos : 0);
-
-  return {
-    ida: resultadoIda,
-    volta: resultadoVolta,
-    custoTotal
-  };
-};
-
-// Dados mockados baseados no JSON real do backend
-const mockResultIda: TravelResult = {
-  rota: {
-    origem: 'GYN',
-    destino: 'ATL',
-    caminho: ['GYN', 'GRU', 'JFK', 'ATL'],
-    trechos: [
-      {
-        origem: 'GYN',
-        destino: 'GRU',
-        voo: {
-          id: 'G31497_2026_03_07_06:15',
-          cia: 'GOL',
-          codigo: 'G31497',
-          data: '2026-03-07',
-          saida: '06:15',
-          duracao_min: 120,
-          preco: 450.0
-        }
-      },
-      {
-        origem: 'GRU',
-        destino: 'JFK',
-        voo: {
-          id: 'AV248_2026_03_12_01:20',
-          cia: 'Avianca',
-          codigo: 'AV248',
-          data: '2026-03-12',
-          saida: '01:20',
-          duracao_min: 600,
-          preco: 2800.0
-        }
-      },
-      {
-        origem: 'JFK',
-        destino: 'ATL',
-        voo: {
-          id: 'F94817_2026_03_16_06:00',
-          cia: 'Frontier',
-          codigo: 'F94817',
-          data: '2026-03-16',
-          saida: '06:00',
-          duracao_min: 180,
-          preco: 650.0
-        }
-      }
-    ]
-  },
-  custos: {
-    total: 6778.42,
-    voos: 3900.0,
-    hospedagem: 1938.32,
-    alimentacao: 940.1,
-    transporte: 0.0
-  },
-  detalhes: {
-    hospedagem: [
-      {
-        cidade: 'GYN',
-        diarias: 2,
-        diaria: 70.0,
-        total: 140.0
-      },
-      {
-        cidade: 'GRU',
-        diarias: 3,
-        diaria: 147.0,
-        total: 441.0
-      },
-      {
-        cidade: 'ATL',
-        diarias: 2,
-        diaria: 678.66,
-        total: 1357.32
-      }
-    ],
-    alimentacao: [
-      {
-        cidade: 'GYN',
-        diarias: 2,
-        custo_dia: 60.0,
-        total: 120.0
-      },
-      {
-        cidade: 'GRU',
-        diarias: 3,
-        custo_dia: 90.5,
-        total: 271.5
-      },
-      {
-        cidade: 'ATL',
-        diarias: 2,
-        custo_dia: 274.3,
-        total: 548.6
-      }
-    ],
-    transporte: [
-      {
-        cidade: 'GYN',
-        diarias: 2,
-        custo_dia: 0.0,
-        total: 0.0
-      },
-      {
-        cidade: 'GRU',
-        diarias: 3,
-        custo_dia: 0.0,
-        total: 0.0
-      },
-      {
-        cidade: 'ATL',
-        diarias: 2,
-        custo_dia: 0.0,
-        total: 0.0
-      }
-    ]
-  }
-};
-
-// Mock da volta (apenas voos)
-const mockResultVolta: TravelResult = {
-  rota: {
-    origem: 'ATL',
-    destino: 'GYN',
-    caminho: ['ATL', 'GYN'],
-    trechos: [
-      {
-        origem: 'ATL',
-        destino: 'GYN',
-        voo: {
-          id: 'G32198_2026_03_20_14:30',
-          cia: 'GOL',
-          codigo: 'G32198',
-          data: '2026-03-20',
-          saida: '14:30',
-          duracao_min: 720,
-          preco: 1850.0
-        }
-      }
-    ]
-  },
-  custos: {
-    total: 1850.0,
-    voos: 1850.0,
-    hospedagem: 0.0,
-    alimentacao: 0.0,
-    transporte: 0.0
-  },
-  detalhes: {
-    hospedagem: [],
-    alimentacao: [],
-    transporte: []
-  }
-};
-
-// Combinar resultados
-const mockResult = combineResults(mockResultIda, mockResultVolta);
-
 // Mapa de nomes de cidades
 const CIDADE_NOMES: Record<string, string> = {
   GYN: 'Goiânia',
@@ -280,6 +111,16 @@ const CIDADE_NOMES: Record<string, string> = {
 
 export default function SmartTripResultados() {
   const navigate = useNavigate();
+  const { result } = useTrip();
+
+  // Criar resultado combinado a partir do contexto
+  const combinedResult: CombinedTravelResult | null = result
+    ? {
+        ida: result,
+        volta: null, // Por enquanto, volta não está sendo armazenada no contexto
+        custoTotal: result.custos.total
+      }
+    : null;
 
   const formatCurrency = (value: number) => {
     return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -296,6 +137,29 @@ export default function SmartTripResultados() {
     return CIDADE_NOMES[codigo] || codigo;
   };
 
+  // Tratamento para estado vazio
+  if (!combinedResult) {
+    return (
+      <Container maxWidth="xl">
+        <Box sx={{ py: 4 }}>
+          <MainCard>
+            <Stack spacing={3} alignItems="center" sx={{ py: 8 }}>
+              <Typography variant="h3" color="text.secondary">
+                Nenhum resultado encontrado
+              </Typography>
+              <Typography variant="body1" color="text.secondary" textAlign="center">
+                Você precisa fazer uma busca primeiro para visualizar os resultados.
+              </Typography>
+              <Button variant="contained" size="large" onClick={() => navigate('/viagens')}>
+                Fazer Nova Busca
+              </Button>
+            </Stack>
+          </MainCard>
+        </Box>
+      </Container>
+    );
+  }
+
   return (
     <Container maxWidth="xl">
       <Box sx={{ py: 4 }}>
@@ -311,23 +175,23 @@ export default function SmartTripResultados() {
               <Stack spacing={3}>
                 <Typography variant="h2">
                   <Airplane variant="Bold" style={{ marginRight: 12, verticalAlign: 'middle' }} />
-                  {mockResult.volta ? 'Rotas de Ida e Volta' : 'Melhor Rota Encontrada'}
+                  {combinedResult.volta ? 'Rotas de Ida e Volta' : 'Melhor Rota Encontrada'}
                 </Typography>
                 
                 {/* Rota de Ida */}
                 <Stack spacing={1}>
                   <Typography variant="h5" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Airplane variant="Bold" size={20} />
-                    Ida: {getCidadeNome(mockResult.ida?.rota?.origem || '')} → {getCidadeNome(mockResult.ida?.rota?.destino || '')}
+                    Ida: {getCidadeNome(combinedResult.ida?.rota?.origem || '')} → {getCidadeNome(combinedResult.ida?.rota?.destino || '')}
                   </Typography>
                   <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
-                    {mockResult.ida?.rota?.caminho?.map((cidade, index) => (
+                    {combinedResult.ida?.rota?.caminho?.map((cidade, index) => (
                       <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Chip
                           label={getCidadeNome(cidade)}
                           sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', fontWeight: 'bold' }}
                         />
-                        {index < (mockResult.ida?.rota?.caminho?.length || 0) - 1 && (
+                        {index < (combinedResult.ida?.rota?.caminho?.length || 0) - 1 && (
                           <ArrowRight size={20} style={{ color: 'white' }} />
                         )}
                       </Box>
@@ -336,20 +200,20 @@ export default function SmartTripResultados() {
                 </Stack>
 
                 {/* Rota de Volta (se existir) */}
-                {mockResult.volta && (
+                {combinedResult.volta && (
                   <Stack spacing={1}>
                     <Typography variant="h5" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Airplane variant="Bold" size={20} style={{ transform: 'rotate(180deg)' }} />
-                      Volta: {getCidadeNome(mockResult.volta.rota.origem)} → {getCidadeNome(mockResult.volta.rota.destino)}
+                      Volta: {getCidadeNome(combinedResult.volta.rota.origem)} → {getCidadeNome(combinedResult.volta.rota.destino)}
                     </Typography>
                     <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
-                      {mockResult.volta.rota.caminho.map((cidade, index) => (
+                      {combinedResult.volta.rota.caminho.map((cidade, index) => (
                         <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <Chip
                             label={getCidadeNome(cidade)}
                             sx={{ bgcolor: 'rgba(255,255,255,0.15)', color: 'white', fontWeight: 'bold' }}
                           />
-                          {index < mockResult.volta.rota.caminho.length - 1 && (
+                          {index < combinedResult.volta.rota.caminho.length - 1 && (
                             <ArrowRight size={20} style={{ color: 'white' }} />
                           )}
                         </Box>
@@ -368,10 +232,10 @@ export default function SmartTripResultados() {
                 <Grid size={{ xs: 12, md: 3 }}>
                   <Paper elevation={0} sx={{ p: 3, bgcolor: 'success.lighter', textAlign: 'center' }}>
                     <Typography variant="h3" color="success.main">
-                      {formatCurrency(mockResult.custoTotal)}
+                      {formatCurrency(combinedResult.custoTotal)}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                      Custo Total {mockResult.volta ? '(Ida + Volta)' : ''}
+                      Custo Total {combinedResult.volta ? '(Ida + Volta)' : ''}
                     </Typography>
                   </Paper>
                 </Grid>
@@ -381,11 +245,11 @@ export default function SmartTripResultados() {
                       <Stack direction="row" spacing={1} alignItems="center">
                         <Airplane size={20} />
                         <Typography variant="body1">
-                          Voos {mockResult.volta ? '(Ida + Volta)' : ''}
+                          Voos {combinedResult.volta ? '(Ida + Volta)' : ''}
                         </Typography>
                       </Stack>
                       <Typography variant="h6" color="text.primary">
-                        {formatCurrency((mockResult.ida?.custos?.voos || 0) + (mockResult.volta?.custos?.voos || 0))}
+                        {formatCurrency((combinedResult.ida?.custos?.voos || 0) + (combinedResult.volta?.custos?.voos || 0))}
                       </Typography>
                     </Box>
                     <Divider />
@@ -394,8 +258,8 @@ export default function SmartTripResultados() {
                         <Home size={20} />
                         <Typography variant="body1">Hospedagem</Typography>
                       </Stack>
-                      <Typography variant="h6" color={(mockResult.ida?.custos?.hospedagem || 0) > 0 ? 'text.primary' : 'text.secondary'}>
-                        {formatCurrency(mockResult.ida?.custos?.hospedagem || 0)}
+                      <Typography variant="h6" color={(combinedResult.ida?.custos?.hospedagem || 0) > 0 ? 'text.primary' : 'text.secondary'}>
+                        {formatCurrency(combinedResult.ida?.custos?.hospedagem || 0)}
                       </Typography>
                     </Box>
                     <Divider />
@@ -404,8 +268,8 @@ export default function SmartTripResultados() {
                         <Cup size={20} />
                         <Typography variant="body1">Alimentação</Typography>
                       </Stack>
-                      <Typography variant="h6" color={(mockResult.ida?.custos?.alimentacao || 0) > 0 ? 'text.primary' : 'text.secondary'}>
-                        {formatCurrency(mockResult.ida?.custos?.alimentacao || 0)}
+                      <Typography variant="h6" color={(combinedResult.ida?.custos?.alimentacao || 0) > 0 ? 'text.primary' : 'text.secondary'}>
+                        {formatCurrency(combinedResult.ida?.custos?.alimentacao || 0)}
                       </Typography>
                     </Box>
                     <Divider />
@@ -414,8 +278,8 @@ export default function SmartTripResultados() {
                         <Car size={20} />
                         <Typography variant="body1">Transporte Local</Typography>
                       </Stack>
-                      <Typography variant="h6" color={(mockResult.ida?.custos?.transporte || 0) > 0 ? 'text.primary' : 'text.secondary'}>
-                        {formatCurrency(mockResult.ida?.custos?.transporte || 0)}
+                      <Typography variant="h6" color={(combinedResult.ida?.custos?.transporte || 0) > 0 ? 'text.primary' : 'text.secondary'}>
+                        {formatCurrency(combinedResult.ida?.custos?.transporte || 0)}
                       </Typography>
                     </Box>
                   </Stack>
@@ -440,7 +304,7 @@ export default function SmartTripResultados() {
                   </TableHead>
                   <TableBody>
                     {/* Trechos de Ida */}
-                    {mockResult.ida?.rota?.trechos?.map((trecho, index) => (
+                    {combinedResult.ida?.rota?.trechos?.map((trecho, index) => (
                       <TableRow key={`ida-${index}`}>
                         <TableCell>
                           <Stack direction="row" spacing={1} alignItems="center">
@@ -482,7 +346,7 @@ export default function SmartTripResultados() {
                     ))}
                     
                     {/* Trechos de Volta (se existir) */}
-                    {mockResult.volta?.rota.trechos.map((trecho, index) => (
+                    {combinedResult.volta?.rota.trechos.map((trecho, index) => (
                       <TableRow key={`volta-${index}`} sx={{ bgcolor: 'secondary.lighter' }}>
                         <TableCell>
                           <Stack direction="row" spacing={1} alignItems="center">
@@ -532,7 +396,7 @@ export default function SmartTripResultados() {
           <Grid size={{ xs: 12, md: 4 }}>
             <MainCard title="🏨 Hospedagem" secondary={<Home variant="Bold" />}>
               <Stack spacing={2}>
-                {mockResult.ida?.detalhes?.hospedagem?.map((item, index) => (
+                {combinedResult.ida?.detalhes?.hospedagem?.map((item, index) => (
                   <Box key={index}>
                     <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
                       <Typography variant="h6">{getCidadeNome(item.cidade)}</Typography>
@@ -554,10 +418,10 @@ export default function SmartTripResultados() {
                         </Typography>
                       </Box>
                     </Stack>
-                    {index < (mockResult.ida?.detalhes?.hospedagem?.length || 0) - 1 && <Divider sx={{ mt: 2 }} />}
+                    {index < (combinedResult.ida?.detalhes?.hospedagem?.length || 0) - 1 && <Divider sx={{ mt: 2 }} />}
                   </Box>
                 ))}
-                {(!mockResult.ida?.detalhes?.hospedagem || mockResult.ida.detalhes.hospedagem.length === 0) && (
+                {(!combinedResult.ida?.detalhes?.hospedagem || combinedResult.ida.detalhes.hospedagem.length === 0) && (
                   <Typography variant="body2" color="text.secondary" textAlign="center">
                     Nenhuma hospedagem incluída
                   </Typography>
@@ -570,7 +434,7 @@ export default function SmartTripResultados() {
           <Grid size={{ xs: 12, md: 4 }}>
             <MainCard title="🍽️ Alimentação" secondary={<Cup variant="Bold" />}>
               <Stack spacing={2}>
-                {mockResult.ida?.detalhes?.alimentacao?.map((item, index) => (
+                {combinedResult.ida?.detalhes?.alimentacao?.map((item, index) => (
                   <Box key={index}>
                     <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
                       <Typography variant="h6">{getCidadeNome(item.cidade)}</Typography>
@@ -592,10 +456,10 @@ export default function SmartTripResultados() {
                         </Typography>
                       </Box>
                     </Stack>
-                    {index < (mockResult.ida?.detalhes?.alimentacao?.length || 0) - 1 && <Divider sx={{ mt: 2 }} />}
+                    {index < (combinedResult.ida?.detalhes?.alimentacao?.length || 0) - 1 && <Divider sx={{ mt: 2 }} />}
                   </Box>
                 ))}
-                {(!mockResult.ida?.detalhes?.alimentacao || mockResult.ida.detalhes.alimentacao.length === 0) && (
+                {(!combinedResult.ida?.detalhes?.alimentacao || combinedResult.ida.detalhes.alimentacao.length === 0) && (
                   <Typography variant="body2" color="text.secondary" textAlign="center">
                     Nenhuma alimentação incluída
                   </Typography>
@@ -608,7 +472,7 @@ export default function SmartTripResultados() {
           <Grid size={{ xs: 12, md: 4 }}>
             <MainCard title="🚗 Transporte Local" secondary={<Car variant="Bold" />}>
               <Stack spacing={2}>
-                {mockResult.ida?.detalhes?.transporte?.map((item, index) => (
+                {combinedResult.ida?.detalhes?.transporte?.map((item, index) => (
                   <Box key={index}>
                     <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
                       <Typography variant="h6">{getCidadeNome(item.cidade)}</Typography>
@@ -630,10 +494,10 @@ export default function SmartTripResultados() {
                         </Typography>
                       </Box>
                     </Stack>
-                    {index < (mockResult.ida?.detalhes?.transporte?.length || 0) - 1 && <Divider sx={{ mt: 2 }} />}
+                    {index < (combinedResult.ida?.detalhes?.transporte?.length || 0) - 1 && <Divider sx={{ mt: 2 }} />}
                   </Box>
                 ))}
-                {(!mockResult.ida?.detalhes?.transporte || mockResult.ida.detalhes.transporte.length === 0) && (
+                {(!combinedResult.ida?.detalhes?.transporte || combinedResult.ida.detalhes.transporte.length === 0) && (
                   <Typography variant="body2" color="text.secondary" textAlign="center">
                     Nenhum transporte local incluído
                   </Typography>
