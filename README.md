@@ -63,6 +63,18 @@ O projeto é dividido em duas partes principais:
 - Python 3.8+
 - pip
 
+### 📥 Clonando o Repositório
+
+Primeiro, clone o projeto do GitHub:
+
+```bash
+# Clone o repositório
+git clone https://github.com/camillara/smarttrip-ai.git
+
+# Entre no diretório do projeto
+cd smarttrip-ai
+```
+
 ### Instalação e Execução
 
 #### 1️⃣ Backend (API FastAPI)
