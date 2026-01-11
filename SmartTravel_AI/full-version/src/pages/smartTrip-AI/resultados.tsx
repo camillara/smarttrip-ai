@@ -110,7 +110,7 @@ export default function SmartTripResultados() {
   const combinedResult: (CombinedTravelResult & { custoTotal: number }) | null = result
     ? {
         ...result,
-        custoTotal: result.ida.custos.total + (result.volta ? result.volta.custos.voos : 0)
+        custoTotal: (result.ida?.custos?.total || 0) + (result.volta?.custos?.voos || 0)
       }
     : null;
 
@@ -135,8 +135,8 @@ export default function SmartTripResultados() {
     return CIDADE_NOMES[codigo] || codigo;
   };
 
-  // Tratamento para estado vazio
-  if (!combinedResult) {
+  // Tratamento para estado vazio ou malformado
+  if (!combinedResult || !combinedResult.ida || !combinedResult.ida.custos) {
     return (
       <Container maxWidth="xl">
         <Box sx={{ py: 4 }}>
@@ -198,20 +198,20 @@ export default function SmartTripResultados() {
                 </Stack>
 
                 {/* Rota de Volta (se existir) */}
-                {combinedResult.volta && (
+                {combinedResult.volta && combinedResult.volta.rota && (
                   <Stack spacing={1}>
                     <Typography variant="h5" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Airplane variant="Bold" size={20} style={{ transform: 'rotate(180deg)' }} />
                       Volta: {getCidadeNome(combinedResult.volta.rota.origem)} → {getCidadeNome(combinedResult.volta.rota.destino)}
                     </Typography>
                     <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
-                      {combinedResult.volta.rota.caminho.map((cidade, index) => (
+                      {(combinedResult.volta.rota.caminho || []).map((cidade, index) => (
                         <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <Chip
                             label={getCidadeNome(cidade)}
                             sx={{ bgcolor: 'rgba(255,255,255,0.15)', color: 'white', fontWeight: 'bold' }}
                           />
-                          {index < combinedResult.volta.rota.caminho.length - 1 && (
+                          {index < (combinedResult.volta?.rota?.caminho?.length || 0) - 1 && (
                             <ArrowRight size={20} style={{ color: 'white' }} />
                           )}
                         </Box>
@@ -344,7 +344,7 @@ export default function SmartTripResultados() {
                     ))}
                     
                     {/* Trechos de Volta (se existir) */}
-                    {combinedResult.volta?.rota.trechos.map((trecho, index) => (
+                    {(combinedResult.volta?.rota?.trechos || []).map((trecho, index) => (
                       <TableRow key={`volta-${index}`} sx={{ bgcolor: 'secondary.lighter' }}>
                         <TableCell>
                           <Stack direction="row" spacing={1} alignItems="center">
