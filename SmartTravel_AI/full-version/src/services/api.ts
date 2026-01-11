@@ -1,3 +1,10 @@
+// Interface para datas disponíveis
+export interface AvailableDates {
+  data_minima: string;
+  data_maxima: string;
+  mensagem: string;
+}
+
 // Interface para o payload de viagem
 export interface TripPayload {
   ida_volta: boolean;
@@ -60,6 +67,17 @@ export interface TravelResult {
       total: number;
     }>;
   };
+}
+
+// Função para buscar datas disponíveis
+export async function getAvailableDates(): Promise<AvailableDates> {
+  const response = await fetch("http://127.0.0.1:8000/available-dates");
+
+  if (!response.ok) {
+    throw new Error("Erro ao buscar datas disponíveis");
+  }
+
+  return response.json();
 }
 
 // Função para otimizar viagem (chamada única ao backend)

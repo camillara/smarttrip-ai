@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { optimizeCompleteTrip } from 'services/api';
+import { optimizeCompleteTrip, getAvailableDates, type AvailableDates } from 'services/api';
 import { useTrip } from 'contexts/TripContext';
 
 // material-ui
@@ -62,6 +62,8 @@ export default function SmartTripViagens() {
   const navigate = useNavigate();
   const { setResult } = useTrip();
   const [loading, setLoading] = useState<boolean>(false);
+  const [loadingDates, setLoadingDates] = useState<boolean>(true);
+  const [availableDates, setAvailableDates] = useState<AvailableDates | null>(null);
   const [formData, setFormData] = useState<TravelFormData>({
     ida_volta: true,
     origem: '',
@@ -78,6 +80,24 @@ export default function SmartTripViagens() {
     incluir_hospedagem: true,
     incluir_transporte: true
   });
+
+  // Buscar datas disponíveis ao carregar o componente
+  useEffect(() => {
+    const fetchAvailableDates = async () => {
+      try {
+        setLoadingDates(true);
+        const dates = await getAvailableDates();
+        setAvailableDates(dates);
+      } catch (error) {
+        console.error('Erro ao buscar datas disponíveis:', error);
+        alert('Erro ao buscar datas disponíveis. Usando datas padrão.');
+      } finally {
+        setLoadingDates(false);
+      }
+    };
+
+    fetchAvailableDates();
+  }, []);
 
   const handleInputChange = (field: keyof TravelFormData) => (event: any) => {
     const value = event.target.value;
@@ -154,16 +174,24 @@ export default function SmartTripViagens() {
   };
 
   //
-  // Obter data de hoje no formato YYYY-MM-DD
-  const getToday = () => {
+  // Obter data mínima disponível da API ou data de hoje como fallback
+  const getMinDate = () => {
+    if (availableDates?.data_minima) {
+      return availableDates.data_minima;
+    }
     const today = new Date();
     return today.toISOString().split('T')[0];
   };
 
-  // Data mínima para retorno (data de ida ou hoje, o que for maior)
+  // Obter data máxima disponível da API
+  const getMaxDate = () => {
+    return availableDates?.data_maxima || undefined;
+  };
+
+  // Data mínima para retorno (data de ida ou data mínima da API, o que for maior)
   const getMinReturnDate = () => {
-    if (!formData.data_ida) return getToday();
-    return formData.data_ida > getToday() ? formData.data_ida : getToday();
+    if (!formData.data_ida) return getMinDate();
+    return formData.data_ida > getMinDate() ? formData.data_ida : getMinDate();
   };
 
   const handleSubmit = async () => {
@@ -296,9 +324,14 @@ export default function SmartTripViagens() {
                     onChange={handleInputChange('data_ida')}
                     slotProps={{
                       inputLabel: { shrink: true },
-                      htmlInput: { min: getToday() }
+                      htmlInput: { 
+                        min: getMinDate(),
+                        max: getMaxDate()
+                      }
                     }}
+                    disabled={loadingDates}
                     required
+                    helperText={loadingDates ? 'Carregando datas disponíveis...' : availableDates?.mensagem}
                   />
                 </Grid>
                 <Grid size={{ xs: 12, md: 6 }}>
@@ -310,11 +343,20 @@ export default function SmartTripViagens() {
                     onChange={handleInputChange('data_retorno')}
                     slotProps={{
                       inputLabel: { shrink: true },
-                      htmlInput: { min: getMinReturnDate() }
+                      htmlInput: { 
+                        min: getMinReturnDate(),
+                        max: getMaxDate()
+                      }
                     }}
-                    disabled={!formData.ida_volta}
+                    disabled={!formData.ida_volta || loadingDates}
                     required={formData.ida_volta}
-                    helperText={!formData.ida_volta ? 'Disponível apenas para viagens de ida e volta' : ''}
+                    helperText={
+                      !formData.ida_volta 
+                        ? 'Disponível apenas para viagens de ida e volta' 
+                        : loadingDates 
+                        ? 'Carregando datas disponíveis...' 
+                        : ''
+                    }
                   />
                 </Grid>
 
@@ -498,10 +540,9 @@ export default function SmartTripViagens() {
                         onChange={handleInputChange('destino_volta')}
                         label="Para Qual Cidade Vai na Volta"
                       >
-                        {/* Não pode ser: origem, destino, nem locais_visitar */}
+                        {/* Não pode ser: destino, nem locais_visitar (mas pode ser origem) */}
                         {CIDADES_DISPONIVEIS.filter(
                           (cidade) =>
-                            cidade.value !== formData.origem &&
                             cidade.value !== formData.destino &&
                             !formData.locais_visitar.includes(cidade.value)
                         ).map((cidade) => (
